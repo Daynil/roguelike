@@ -14,15 +14,16 @@ class App extends React.Component<any, any> {
 class Level extends React.Component<any, any> {
 	
 	generateTile(level: number) {
-		
+		return <Tile type={TileType.Blank} />
 	}
 	
 	generateMap(level: number) {
+		// Hold all data in react element vs parallel 2d grid? 
 		let map = [];
 		for (let row = 0; row < 100; row++) {
 			let genRow = [];
 			for (let col = 0; col < 100; col++) {
-				genRow.push(<div className={this.generateTile(level)}></div>);
+				genRow.push(this.generateTile(1));
 			}
 		}
 	}
@@ -35,6 +36,26 @@ class Level extends React.Component<any, any> {
 			</div>
 		);
 	}
+}
+
+class Tile extends React.Component<any, any> {
+	type: TileType;
+	
+	render() {
+		return (
+			<div>
+			</div>
+		);
+	}
+}
+
+enum TileType {
+	Player,
+	Enemy,
+	Item,
+	Stairs,
+	Health,
+	Blank
 }
 
 export default App;
