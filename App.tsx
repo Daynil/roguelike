@@ -155,7 +155,7 @@ class Game {
 	topLimit = this.camOffsetVertBlocks;
 	
 	gameState = {
-		playerPos: {row: 0, col: 0},
+		playerPos: {row: 3, col: 3},
 		cameraOffset: {
 			top: -(this.camOffsetVertBlocks*this.blockSizePx), 
 			left: -(this.camOffsetHorizBlocks*this.blockSizePx)
@@ -165,7 +165,7 @@ class Game {
 	
 	constructor(refreshState: ()=>void) {
 		this.refreshState = refreshState;
-		this.generateMap(1);
+		this.generateRandomMap();
 		this.rightLimit = this.gameState.levelMap[0].length - 1 - this.camOffsetHorizBlocks;
 		this.bottomLimit = this.gameState.levelMap.length - 1 - this.camOffsetVertBlocks;
 	}
@@ -197,8 +197,140 @@ class Game {
 		this.gameState.levelMap = map;
 	}
 	
+	// Random Walk Generation Algorithm
+	generateRandomMap() {
+		let mapSize = {rows: 25, cols: 25};
+		let dungeonSize = 0.7; // Percent of dungeon to be open space
+		let desiredOpenSpaces = Math.floor( (mapSize.rows * mapSize.cols) * 0.7 );
+		console.log(desiredOpenSpaces);
+		let map: TileState[][] = [];
+		
+		// Generate a full map of walls of desired size.
+		for (let row = 0; row < mapSize.rows; row++) {
+			let nextRow = [];
+			for (let col = 0; col < mapSize.cols; col++) {
+				let tile: TileState = {type: TileType.Wall};
+				nextRow.push(tile);
+			}
+			map.push(nextRow);
+		}
+		
+		let curPosition: MapCoords = {
+			row: _.random(0, mapSize.rows-1),
+			col: _.random(0, mapSize.cols-1)
+		};
+		this.gameState.playerPos = {row: curPosition.row, col: curPosition.col};
+		
+		let numOpenSpaces = 1;
+		let visitedPositions: MapCoords[] = [curPosition];
+		while (numOpenSpaces < desiredOpenSpaces) {
+			let randomStep = _.random(0, 3);
+			let nextPosition: MapCoords;
+			switch (randomStep) {
+				case Direction.Left:
+					nextPosition = {row: curPosition.row, col: curPosition.col - 1};
+					//if (_.some(visitedPositions, nextPosition)) continue;
+					if (nextPosition.col < 0) continue;
+					curPosition = nextPosition;
+					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
+					visitedPositions.push(nextPosition);
+					numOpenSpaces++;
+					break;
+				case Direction.Up:
+					nextPosition = {row: curPosition.row - 1, col: curPosition.col};
+					//if (_.some(visitedPositions, nextPosition)) continue;
+					if (nextPosition.row < 0) continue;
+					curPosition = nextPosition;
+					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
+					visitedPositions.push(nextPosition);
+					numOpenSpaces++;
+					break;
+				case Direction.Right:
+					nextPosition = {row: curPosition.row, col: curPosition.col + 1};
+					//if (_.some(visitedPositions, nextPosition)) continue;
+					if (nextPosition.col > mapSize.cols - 1) continue;
+					curPosition = nextPosition;
+					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
+					visitedPositions.push(nextPosition);
+					numOpenSpaces++;
+					break;
+				case Direction.Down:
+					nextPosition = {row: curPosition.row + 1, col: curPosition.col};
+					//if (_.some(visitedPositions, nextPosition)) continue;
+					if (nextPosition.row > mapSize.rows - 1) continue;
+					curPosition = nextPosition;
+					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
+					visitedPositions.push(nextPosition);
+					numOpenSpaces++;
+					break;
+				default:
+					break;
+			}
+		}
+		this.gameState.levelMap = map;
+		this.placePlayerRandomly();
+		//this.placePlayerTopLeft();
+	}
+	
+	placePlayerTopLeft() {
+		// Find first open space in top left edge and place player
+		let gameState: GameState = this.gameState;
+		let mapSize = {rows: gameState.levelMap.length, cols: gameState.levelMap[0].length};
+		let randomPosition: MapCoords;
+		let validPosition = false;
+		while (!validPosition) {
+			randomPosition = {
+				row: _.random(0, mapSize.rows-1),
+				col: _.random(0, mapSize.cols-1)
+			};
+			if (gameState.levelMap[randomPosition.row][randomPosition.col].type != TileType.Blank) continue;
+			validPosition = true;
+		}
+		this.gameState.playerPos = randomPosition;
+		this.gameState.levelMap[randomPosition.row][randomPosition.col] = {type: TileType.Player};
+	}
+	
+	placePlayerRandomly() {
+		let gameState: GameState = this.gameState;
+		let mapSize = {rows: gameState.levelMap.length, cols: gameState.levelMap[0].length};
+		let randomPosition: MapCoords;
+		let validPosition = false;
+		while (!validPosition) {
+			randomPosition = {
+				row: _.random(0, mapSize.rows-1),
+				col: _.random(0, mapSize.cols-1)
+			};
+			if (gameState.levelMap[randomPosition.row][randomPosition.col].type != TileType.Blank) continue;
+			validPosition = true;
+		}
+		let camOffset: CameraOffset = {
+			top: this.gameState.cameraOffset.top, 
+			left: this.gameState.cameraOffset.left
+		};
+		if (randomPosition.col > this.leftLimit
+			&& randomPosition.col <= this.rightLimit) {
+			camOffset.left -= (randomPosition.col - this.leftLimit) * this.blockSizePx;
+		} 
+		if (randomPosition.row > this.topLimit 
+			&& randomPosition.row <= this.bottomLimit) {
+			camOffset.top -= (randomPosition.row - this.topLimit) * this.blockSizePx;
+		} 
+		if (randomPosition.col < this.rightLimit
+			&& randomPosition.col >= this.leftLimit) {
+			camOffset.left += (this.rightLimit - randomPosition.col) * this.blockSizePx;
+		} 
+		if (randomPosition.row < this.bottomLimit
+			&& randomPosition.row >= this.topLimit) {
+			camOffset.top += (this.bottomLimit - randomPosition.row) * this.blockSizePx;
+		}
+		this.gameState.playerPos = randomPosition;
+		this.gameState.levelMap[randomPosition.row][randomPosition.col] = {type: TileType.Player};
+		this.gameState.cameraOffset = camOffset;
+		console.log(randomPosition, camOffset);
+	}
+	
 	movePlayer(direction: string) {
-		let playerState: TileState = _.create(this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col]);
+		let playerState: TileState = _.clone(this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col]);
 		let blankState: TileState = {type: TileType.Blank};
 		// Middle = 9 left/right, 6 up/down
 		switch (direction) {
@@ -268,8 +400,13 @@ interface MapCoords {
 
 interface GameState {
 	playerPos: MapCoords;
-	cameraOffset: {top: number; left: number};
+	cameraOffset: CameraOffset;
 	levelMap: TileState[][];
+}
+
+interface CameraOffset {
+	top: number;
+	left: number;
 }
 
 interface TileState {
@@ -282,6 +419,10 @@ enum TileType {
 	Enemy,
 	Item,
 	Wall
+}
+
+enum Direction {
+	Left, Up, Right, Down
 }
 
 export default App;
