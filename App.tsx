@@ -113,9 +113,9 @@ class GameComp extends React.Component<any, any> {
 	generateMap(level: number) {
 		// Hold all data in react element vs parallel 2d grid? 
 		let map = [];
-		for (let row = 0; row < 100; row++) {
+		for (let row = 0; row < this.gameState.levelMap.length; row++) {
 			let genRow = [];
-			for (let col = 0; col < 100; col++) {
+			for (let col = 0; col < this.gameState.levelMap[0].length; col++) {
 				genRow.push(this.generateTile({row: row, col: col}));
 			}
 			map.push(<div key={row}>{genRow}</div>);
@@ -145,9 +145,10 @@ class Game {
 	
 	refreshState: () => void;
 	
-	camOffsetVertBlocks = 6;
-	camOffsetHorizBlocks = 9;
+	camOffsetHorizBlocks = 10;
+	camOffsetVertBlocks = 7;
 	blockSizePx = 32;
+	
 	leftLimit = this.camOffsetHorizBlocks;
 	rightLimit: number;
 	bottomLimit: number;
@@ -179,9 +180,9 @@ class Game {
 			]
 		*/
 		let map = [];
-		for (let row = 0; row < 100; row++) {
+		for (let row = 0; row < 25; row++) {
 			let nextRow = []
-			for (let col = 0; col < 100; col++) {
+			for (let col = 0; col < 25; col++) {
 				let tile: TileState;
 				let curCoords: MapCoords = {row: row, col: col};
 				let rollWall = false;
@@ -209,7 +210,6 @@ class Game {
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
 					if (this.gameState.playerPos.col < this.rightLimit
 							&& this.gameState.playerPos.col >= this.leftLimit) {
-						console.log('left move offset at:', this.gameState.playerPos);
 						this.gameState.cameraOffset.left += this.blockSizePx;
 					}
 					this.refreshState();
@@ -236,7 +236,6 @@ class Game {
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
 					if (this.gameState.playerPos.col > this.leftLimit
 							&& this.gameState.playerPos.col <= this.rightLimit) {
-						console.log('right move offset at:', this.gameState.playerPos);
 						this.gameState.cameraOffset.left -= this.blockSizePx;
 					}
 					this.refreshState();

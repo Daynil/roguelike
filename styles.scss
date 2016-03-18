@@ -7,16 +7,16 @@
 		font-weight: 300;
 	}
 	#game-screen {
-		width: 640px;
-		height: 448px;
+		width: 672px;
+		height: 480px;
 		white-space: nowrap;
 		margin: 0 auto;
 		overflow: hidden;
 		margin-top: 5%;
 		font-size: 0;
 		#map {
-			margin-left: 288px;
-			margin-top: 192px;
+			margin-left: 320px;
+			margin-top: 224px;
 			position: relative;
 			.tile {
 				display: inline-block;
