@@ -4,6 +4,7 @@ import * as _ from 'lodash';
 class App extends React.Component<any, any> {
 	
 	game: Game;
+	isKeyDown = false;
 	
 	constructor() {
 		super();
@@ -15,10 +16,12 @@ class App extends React.Component<any, any> {
 	
 	componentDidMount() {
 		document.body.onkeydown = this.handleKeyDown.bind(this);
+		document.body.onkeyup = this.handleKeyUp.bind(this);
 	}
 	
 	componentWillUnmount() {
-		document.body.onkeypress = null;
+		document.body.onkeydown = null;
+		document.body.onkeyup = null;
 	}
 	
 	refreshState() {
@@ -27,23 +30,38 @@ class App extends React.Component<any, any> {
 	
 	handleKeyDown(e: KeyboardEvent) {
 		let key = e.keyCode;
-		console.log(this);
 		switch (key) {
 			case 37:
-				this.game.movePlayer('left');
+				if (!this.isKeyDown) {
+					this.isKeyDown = true;
+					this.game.movePlayer('left');
+				}
 				break;
 			case 38:
-				this.game.movePlayer('up');
+				if (!this.isKeyDown) {
+					this.isKeyDown = true;
+					this.game.movePlayer('up');
+				}
 				break;
 			case 39:
-				this.game.movePlayer('right');
+				if (!this.isKeyDown) {
+					this.isKeyDown = true;
+					this.game.movePlayer('right');
+				}
 				break;
 			case 40:
-				this.game.movePlayer('down');
+				if (!this.isKeyDown) {
+					this.isKeyDown = true;
+					this.game.movePlayer('down');
+				}
 				break;
 			default:
 				break;
 		}
+	}
+	
+	handleKeyUp(e: KeyboardEvent) {
+		if (this.isKeyDown) this.isKeyDown = false;
 	}
 	
 	render() {
@@ -83,6 +101,8 @@ class GameComp extends React.Component<any, any> {
 			case TileType.Blank:
 				tileSprite += ' blank';
 				break;
+			case TileType.Wall: 
+				tileSprite += ' wall';
 			default:
 				break;
 		}
@@ -124,9 +144,14 @@ class Tile extends React.Component<any, any> {
 class Game {
 	
 	refreshState: () => void;
+	
 	camOffsetVertBlocks = 6;
 	camOffsetHorizBlocks = 9;
-	blockSizePx = 34;
+	blockSizePx = 32;
+	leftLimit = this.camOffsetHorizBlocks;
+	rightLimit: number;
+	bottomLimit: number;
+	topLimit = this.camOffsetVertBlocks;
 	
 	gameState = {
 		playerPos: {row: 0, col: 0},
@@ -140,6 +165,8 @@ class Game {
 	constructor(refreshState: ()=>void) {
 		this.refreshState = refreshState;
 		this.generateMap(1);
+		this.rightLimit = this.gameState.levelMap[0].length - 1 - this.camOffsetHorizBlocks;
+		this.bottomLimit = this.gameState.levelMap.length - 1 - this.camOffsetVertBlocks;
 	}
 	
 	generateMap(level: number) {
@@ -157,7 +184,10 @@ class Game {
 			for (let col = 0; col < 100; col++) {
 				let tile: TileState;
 				let curCoords: MapCoords = {row: row, col: col};
+				let rollWall = false;
+				if (_.random(1, 4) === 1) rollWall = true; 
 				if ( _.isEqual(curCoords, this.gameState.playerPos) ) tile = {type: TileType.Player};
+				else if (rollWall) tile = {type: TileType.Wall};
 				else tile = {type: TileType.Blank};
 				nextRow.push(tile);
 			}
@@ -177,7 +207,9 @@ class Game {
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = blankState;
 					this.gameState.playerPos = {row: this.gameState.playerPos.row, col: this.gameState.playerPos.col - 1};
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
-					if (this.gameState.playerPos.col < this.gameState.levelMap[0].length-1 - this.camOffsetHorizBlocks) {
+					if (this.gameState.playerPos.col < this.rightLimit
+							&& this.gameState.playerPos.col >= this.leftLimit) {
+						console.log('left move offset at:', this.gameState.playerPos);
 						this.gameState.cameraOffset.left += this.blockSizePx;
 					}
 					this.refreshState();
@@ -189,8 +221,9 @@ class Game {
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = blankState;
 					this.gameState.playerPos = {row: this.gameState.playerPos.row - 1, col: this.gameState.playerPos.col};
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
-					if (this.gameState.playerPos.row < this.gameState.levelMap.length-1 - this.camOffsetVertBlocks) {
-						this.gameState.cameraOffset.top -= this.blockSizePx;
+					if (this.gameState.playerPos.row < this.bottomLimit 
+							&& this.gameState.playerPos.row >= this.topLimit) {
+						this.gameState.cameraOffset.top += this.blockSizePx;
 					}
 					this.refreshState();
 				}
@@ -201,7 +234,9 @@ class Game {
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = blankState;
 					this.gameState.playerPos = {row: this.gameState.playerPos.row, col: this.gameState.playerPos.col + 1};
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
-					if (this.gameState.playerPos.col > this.camOffsetHorizBlocks) {
+					if (this.gameState.playerPos.col > this.leftLimit
+							&& this.gameState.playerPos.col <= this.rightLimit) {
+						console.log('right move offset at:', this.gameState.playerPos);
 						this.gameState.cameraOffset.left -= this.blockSizePx;
 					}
 					this.refreshState();
@@ -213,8 +248,9 @@ class Game {
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = blankState;
 					this.gameState.playerPos = {row: this.gameState.playerPos.row + 1, col: this.gameState.playerPos.col};
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
-					if (this.gameState.playerPos.row > this.camOffsetVertBlocks) {
-						this.gameState.cameraOffset.top += this.blockSizePx;
+					if (this.gameState.playerPos.row > this.topLimit
+							&& this.gameState.playerPos.row <= this.bottomLimit) {
+						this.gameState.cameraOffset.top -= this.blockSizePx;
 					}
 					this.refreshState();
 				}
@@ -245,7 +281,8 @@ enum TileType {
 	Blank,
 	Player,
 	Enemy,
-	Item
+	Item,
+	Wall
 }
 
 export default App;

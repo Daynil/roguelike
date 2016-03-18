@@ -8,7 +8,7 @@
 	}
 	#game-screen {
 		width: 640px;
-		height: 480px;
+		height: 448px;
 		white-space: nowrap;
 		margin: 0 auto;
 		overflow: hidden;
@@ -22,13 +22,15 @@
 				display: inline-block;
 				width: 32px;
 				height: 32px;
-				border: 1px solid aliceblue;
 			}
 			.blank {
 				background-color: lightgrey;
 			}		
 			.player {
 				background-color: lightgreen;
+			}
+			.wall {
+				background-color: darkgray;
 			}
 		}
 	}
