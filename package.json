@@ -9,6 +9,7 @@
   "author": "Daynil",
   "license": "ISC",
   "dependencies": {
+    "lodash": "^4.6.1",
     "react": "^0.14.6",
     "react-dom": "^0.14.6",
     "typescript": "^1.7.5"

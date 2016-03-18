@@ -13,6 +13,9 @@
     },
     "react/react-dom.d.ts": {
       "commit": "2f47c75835b837777a85287611703d683b0aaa83"
+    },
+    "lodash/lodash.d.ts": {
+      "commit": "cc3d223a946f661eff871787edeb0fcb8f0db156"
     }
   }
 }

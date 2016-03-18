@@ -1,7 +1,35 @@
 #page-wrapper {
+	margin-top: -22px;
 	font-family: 'Raleway';
 	text-align: center;
+	height: 100vh;
 	h1 {
 		font-weight: 300;
+	}
+	#game-screen {
+		width: 640px;
+		height: 480px;
+		white-space: nowrap;
+		margin: 0 auto;
+		overflow: hidden;
+		margin-top: 5%;
+		font-size: 0;
+		#map {
+			margin-left: 288px;
+			margin-top: 192px;
+			position: relative;
+			.tile {
+				display: inline-block;
+				width: 32px;
+				height: 32px;
+				border: 1px solid aliceblue;
+			}
+			.blank {
+				background-color: lightgrey;
+			}		
+			.player {
+				background-color: lightgreen;
+			}
+		}
 	}
 }
