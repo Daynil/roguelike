@@ -197,11 +197,11 @@ class Game {
 		this.gameState.levelMap = map;
 	}
 	
-	// Random Walk Generation Algorithm
+	// Drunken Walk Generation Algorithm
 	generateRandomMap() {
 		let mapSize = {rows: 25, cols: 25};
-		let dungeonSize = 0.7; // Percent of dungeon to be open space
-		let desiredOpenSpaces = Math.floor( (mapSize.rows * mapSize.cols) * 0.7 );
+		let openness = 0.6; // Percent of dungeon to be open space
+		let desiredOpenSpaces = Math.floor( (mapSize.rows * mapSize.cols) * openness );
 		console.log(desiredOpenSpaces);
 		let map: TileState[][] = [];
 		
@@ -222,46 +222,42 @@ class Game {
 		this.gameState.playerPos = {row: curPosition.row, col: curPosition.col};
 		
 		let numOpenSpaces = 1;
-		let visitedPositions: MapCoords[] = [curPosition];
 		while (numOpenSpaces < desiredOpenSpaces) {
 			let randomStep = _.random(0, 3);
 			let nextPosition: MapCoords;
+			let alreadyVisited = false;
 			switch (randomStep) {
 				case Direction.Left:
 					nextPosition = {row: curPosition.row, col: curPosition.col - 1};
-					//if (_.some(visitedPositions, nextPosition)) continue;
 					if (nextPosition.col < 0) continue;
+					alreadyVisited = map[nextPosition.row][nextPosition.col].type === TileType.Blank;
 					curPosition = nextPosition;
 					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
-					visitedPositions.push(nextPosition);
-					numOpenSpaces++;
+					if (!alreadyVisited) numOpenSpaces++;
 					break;
 				case Direction.Up:
 					nextPosition = {row: curPosition.row - 1, col: curPosition.col};
-					//if (_.some(visitedPositions, nextPosition)) continue;
 					if (nextPosition.row < 0) continue;
+					alreadyVisited = map[nextPosition.row][nextPosition.col].type === TileType.Blank;
 					curPosition = nextPosition;
 					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
-					visitedPositions.push(nextPosition);
-					numOpenSpaces++;
+					if (!alreadyVisited) numOpenSpaces++;
 					break;
 				case Direction.Right:
 					nextPosition = {row: curPosition.row, col: curPosition.col + 1};
-					//if (_.some(visitedPositions, nextPosition)) continue;
 					if (nextPosition.col > mapSize.cols - 1) continue;
+					alreadyVisited = map[nextPosition.row][nextPosition.col].type === TileType.Blank;
 					curPosition = nextPosition;
 					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
-					visitedPositions.push(nextPosition);
-					numOpenSpaces++;
+					if (!alreadyVisited) numOpenSpaces++;
 					break;
 				case Direction.Down:
 					nextPosition = {row: curPosition.row + 1, col: curPosition.col};
-					//if (_.some(visitedPositions, nextPosition)) continue;
 					if (nextPosition.row > mapSize.rows - 1) continue;
+					alreadyVisited = map[nextPosition.row][nextPosition.col].type === TileType.Blank;
 					curPosition = nextPosition;
 					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
-					visitedPositions.push(nextPosition);
-					numOpenSpaces++;
+					if (!alreadyVisited) numOpenSpaces++;
 					break;
 				default:
 					break;
