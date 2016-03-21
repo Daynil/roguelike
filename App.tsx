@@ -29,16 +29,16 @@ class App extends React.Component<any, any> {
 		let key = e.keyCode;
 		switch (key) {
 			case 37:
-				this.game.movePlayer('left');
+				this.game.checkDirection('left');
 				break;
 			case 38:
-				this.game.movePlayer('up');
+				this.game.checkDirection('up');
 				break;
 			case 39:
-				this.game.movePlayer('right');
+				this.game.checkDirection('right');
 				break;
 			case 40:
-				this.game.movePlayer('down');
+				this.game.checkDirection('down');
 				break;
 			default:
 				break;
@@ -87,6 +87,10 @@ class GameComp extends React.Component<any, any> {
 				break;
 			case TileType.Wall: 
 				tileSprite += ' wall';
+				break;
+			case TileType.Enemy:
+				tileSprite += ' enemy';
+				break;
 			default:
 				break;
 		}
@@ -95,16 +99,6 @@ class GameComp extends React.Component<any, any> {
 	}
 	
 	generateMap(level: number) {
-		// Hold all data in react element vs parallel 2d grid? 
-/*		let map = [];
-		for (let row = 0; row < this.gameState.levelMap.length; row++) {
-			let genRow = [];
-			for (let col = 0; col < this.gameState.levelMap[0].length; col++) {
-				genRow.push(this.generateTile({row: row, col: col}));
-			}
-			map.push(<div key={row}>{genRow}</div>);
-		}
-		return <div id="map" style={this.getCameraOffset()}>{map}</div>;*/
 		let map = [];
 		let topEdge = this.gameState.viewPort.topEdge;
 		let leftEdge = this.gameState.viewPort.leftEdge;
@@ -263,26 +257,30 @@ class Game {
 		this.gameState.levelMap = map;
 		this.rightLimit = this.gameState.levelMap[0].length - 1 - this.camOffsetHorizBlocks;
 		this.bottomLimit = this.gameState.levelMap.length - 1 - this.camOffsetVertBlocks;
+		this.generateEnemies(numOpenSpaces, level);
 		this.placePlayerRandomly();
-		//this.placePlayerTopLeft();
 	}
 	
-	placePlayerTopLeft() {
-		// Find first open space in top left edge and place player
+	generateEnemies(openSpaces: number, level: number) {
 		let gameState: GameState = this.gameState;
 		let mapSize = {rows: gameState.levelMap.length, cols: gameState.levelMap[0].length};
-		let randomPosition: MapCoords;
-		let validPosition = false;
-		while (!validPosition) {
-			randomPosition = {
-				row: _.random(0, mapSize.rows-1),
-				col: _.random(0, mapSize.cols-1)
-			};
-			if (gameState.levelMap[randomPosition.row][randomPosition.col].type != TileType.Blank) continue;
-			validPosition = true;
+		let enemyFactor = level / 50;
+		let desiredNumEnemies = openSpaces * enemyFactor;
+		let numEnemies = 0;
+		while (numEnemies < desiredNumEnemies) {
+			let randomPosition: MapCoords;
+			let validPosition = false;
+			while (!validPosition) {
+				randomPosition = {
+					row: _.random(0, mapSize.rows-1),
+					col: _.random(0, mapSize.cols-1)
+				};
+				if (gameState.levelMap[randomPosition.row][randomPosition.col].type != TileType.Blank) continue;
+				validPosition = true;
+			}
+			this.gameState.levelMap[randomPosition.row][randomPosition.col] = {type: TileType.Enemy};
+			numEnemies++;	
 		}
-		this.gameState.playerPos = randomPosition;
-		this.gameState.levelMap[randomPosition.row][randomPosition.col] = {type: TileType.Player};
 	}
 	
 	placePlayerRandomly() {
@@ -298,93 +296,62 @@ class Game {
 			if (gameState.levelMap[randomPosition.row][randomPosition.col].type != TileType.Blank) continue;
 			validPosition = true;
 		}
-		let viewPort: ViewPort = {
-			topEdge: this.gameState.viewPort.topEdge, 
-			leftEdge: this.gameState.viewPort.leftEdge
-		};
-		if (randomPosition.col > this.leftLimit) {
-			if (randomPosition.col < this.rightLimit) {
-				viewPort.leftEdge += randomPosition.col - this.leftLimit;
-			} else {
-				viewPort.leftEdge += (randomPosition.col - this.leftLimit)
-					- (randomPosition.col - this.rightLimit);
-			}
-		} 
-		if (randomPosition.row > this.topLimit) {
-			if (randomPosition.row < this.bottomLimit) {
-				viewPort.topEdge += randomPosition.row - this.topLimit;
-			} else {
-				viewPort.topEdge += (randomPosition.row - this.topLimit) 
-					- (randomPosition.row - this.bottomLimit);
-			}
-		}
 		this.gameState.playerPos = randomPosition;
 		this.gameState.levelMap[randomPosition.row][randomPosition.col] = {type: TileType.Player};
-		this.gameState.viewPort = viewPort;
+		this.adjustViewport(randomPosition);
 	}
 	
-	movePlayer(direction: string) {
-		let playerState: TileState = _.clone(this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col]);
-		let blankState: TileState = {type: TileType.Blank};
+	checkDirection(direction: string) {
+		let playerNextState: MapCoords;
 		// Middle = 9 left/right, 6 up/down
 		switch (direction) {
 			case 'left':
-				if (this.gameState.playerPos.col === 0) break;
-				else {
-					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = blankState;
-					this.gameState.playerPos = {row: this.gameState.playerPos.row, col: this.gameState.playerPos.col - 1};
-					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
-					if (this.gameState.playerPos.col < this.rightLimit
-							&& this.gameState.playerPos.col >= this.leftLimit) {
-						this.gameState.viewPort.leftEdge -= 1;
-					}
-					this.refreshState();
-				}
+				playerNextState = {row: this.gameState.playerPos.row, col: this.gameState.playerPos.col - 1};
 				break;
 			case 'up':
-				if (this.gameState.playerPos.row === 0) break;
-				else {
-					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = blankState;
-					this.gameState.playerPos = {row: this.gameState.playerPos.row - 1, col: this.gameState.playerPos.col};
-					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
-					if (this.gameState.playerPos.row < this.bottomLimit 
-							&& this.gameState.playerPos.row >= this.topLimit) {
-						this.gameState.viewPort.topEdge -= 1;
-					}
-					this.refreshState();
-				}
+				playerNextState = {row: this.gameState.playerPos.row - 1, col: this.gameState.playerPos.col};
 				break;
 			case 'right':
-				if (this.gameState.playerPos.col === this.gameState.levelMap[0].length-1) break;
-				else {
-					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = blankState;
-					this.gameState.playerPos = {row: this.gameState.playerPos.row, col: this.gameState.playerPos.col + 1};
-					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
-					if (this.gameState.playerPos.col > this.leftLimit
-							&& this.gameState.playerPos.col <= this.rightLimit) {
-						this.gameState.viewPort.leftEdge += 1;
-					}
-					this.refreshState();
-				}
+				playerNextState = {row: this.gameState.playerPos.row, col: this.gameState.playerPos.col + 1};
 				break;
 			case 'down':
-				if (this.gameState.playerPos.row === this.gameState.levelMap.length-1) break;
-				else {
-					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = blankState;
-					this.gameState.playerPos = {row: this.gameState.playerPos.row + 1, col: this.gameState.playerPos.col};
-					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
-					if (this.gameState.playerPos.row > this.topLimit
-							&& this.gameState.playerPos.row <= this.bottomLimit) {
-						this.gameState.viewPort.topEdge += 1;
-					}
-					this.refreshState();
-				}
+				playerNextState = {row: this.gameState.playerPos.row + 1, col: this.gameState.playerPos.col};
 				break;
 			default:
 				break;
 		}
+		let nextStateType = this.gameState.levelMap[playerNextState.row][playerNextState.col].type;
+		if (nextStateType === TileType.Blank) this.movePlayer(this.gameState.playerPos, playerNextState);
 	}
 	
+	movePlayer(curState: MapCoords, nextState: MapCoords) {
+		this.gameState.levelMap[curState.row][curState.col] = {type: TileType.Blank};
+		this.gameState.playerPos = nextState;
+		this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = {type: TileType.Player};
+		this.adjustViewport(nextState);
+		this.refreshState();
+	}
+	
+	adjustViewport(playerState: MapCoords) {
+		let viewPort: ViewPort = {topEdge: 0, leftEdge: 0};
+		if (playerState.col > this.leftLimit) {
+			if (playerState.col < this.rightLimit) {
+				viewPort.leftEdge += playerState.col - this.leftLimit;
+			} else {
+				viewPort.leftEdge += (playerState.col - this.leftLimit)
+					- (playerState.col - this.rightLimit);
+			}
+		} 
+		if (playerState.row > this.topLimit) {
+			if (playerState.row < this.bottomLimit) {
+				viewPort.topEdge += playerState.row - this.topLimit;
+			} else {
+				viewPort.topEdge += (playerState.row - this.topLimit) 
+					- (playerState.row - this.bottomLimit);
+			}
+		}
+		this.gameState.viewPort = viewPort;
+	}
 }
 
 interface MapCoords {
