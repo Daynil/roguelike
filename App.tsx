@@ -4,7 +4,6 @@ import * as _ from 'lodash';
 class App extends React.Component<any, any> {
 	
 	game: Game;
-	isKeyDown = false;
 	
 	constructor() {
 		super();
@@ -16,12 +15,10 @@ class App extends React.Component<any, any> {
 	
 	componentDidMount() {
 		document.body.onkeydown = this.handleKeyDown.bind(this);
-		document.body.onkeyup = this.handleKeyUp.bind(this);
 	}
 	
 	componentWillUnmount() {
 		document.body.onkeydown = null;
-		document.body.onkeyup = null;
 	}
 	
 	refreshState() {
@@ -32,38 +29,22 @@ class App extends React.Component<any, any> {
 		let key = e.keyCode;
 		switch (key) {
 			case 37:
-				if (!this.isKeyDown) {
-					this.isKeyDown = true;
-					this.game.movePlayer('left');
-				}
+				this.game.movePlayer('left');
 				break;
 			case 38:
-				if (!this.isKeyDown) {
-					this.isKeyDown = true;
-					this.game.movePlayer('up');
-				}
+				this.game.movePlayer('up');
 				break;
 			case 39:
-				if (!this.isKeyDown) {
-					this.isKeyDown = true;
-					this.game.movePlayer('right');
-				}
+				this.game.movePlayer('right');
 				break;
 			case 40:
-				if (!this.isKeyDown) {
-					this.isKeyDown = true;
-					this.game.movePlayer('down');
-				}
+				this.game.movePlayer('down');
 				break;
 			default:
 				break;
 		}
 	}
-	
-	handleKeyUp(e: KeyboardEvent) {
-		if (this.isKeyDown) this.isKeyDown = false;
-	}
-	
+
 	render() {
 		return (
 			<div id="page-wrapper">
@@ -77,6 +58,9 @@ class App extends React.Component<any, any> {
 
 class GameComp extends React.Component<any, any> {
 	gameState: GameState;
+	
+	blocksWidth = 21;
+	blocksHeight = 15;
 	
 	constructor(props) {
 		super(props);
@@ -112,7 +96,7 @@ class GameComp extends React.Component<any, any> {
 	
 	generateMap(level: number) {
 		// Hold all data in react element vs parallel 2d grid? 
-		let map = [];
+/*		let map = [];
 		for (let row = 0; row < this.gameState.levelMap.length; row++) {
 			let genRow = [];
 			for (let col = 0; col < this.gameState.levelMap[0].length; col++) {
@@ -120,7 +104,18 @@ class GameComp extends React.Component<any, any> {
 			}
 			map.push(<div key={row}>{genRow}</div>);
 		}
-		return <div id="map" style={this.getCameraOffset()}>{map}</div>;
+		return <div id="map" style={this.getCameraOffset()}>{map}</div>;*/
+		let map = [];
+		let topEdge = this.gameState.viewPort.topEdge;
+		let leftEdge = this.gameState.viewPort.leftEdge;
+		for (let row = topEdge; row < (topEdge + this.blocksHeight); row++) {
+			let genRow = [];
+			for (let col = leftEdge; col < (leftEdge + this.blocksWidth); col++) {
+				genRow.push(this.generateTile({row: row,  col: col}));
+			}
+			map.push(<div key={row}>{genRow}</div>)
+		}
+		return <div id="map">{map}</div>;
 	}
 	
 	render() {
@@ -154,20 +149,22 @@ class Game {
 	bottomLimit: number;
 	topLimit = this.camOffsetVertBlocks;
 	
-	gameState = {
+	blocksWidth = 21;
+	blocksHeight = 15;
+	
+	gameState: GameState = {
 		playerPos: {row: 3, col: 3},
 		cameraOffset: {
 			top: -(this.camOffsetVertBlocks*this.blockSizePx), 
 			left: -(this.camOffsetHorizBlocks*this.blockSizePx)
 		},
-		levelMap: []
+		levelMap: [],
+		viewPort: {topEdge: 0, leftEdge: 0}
 	}
 	
 	constructor(refreshState: ()=>void) {
 		this.refreshState = refreshState;
 		this.generateRandomMap();
-		this.rightLimit = this.gameState.levelMap[0].length - 1 - this.camOffsetHorizBlocks;
-		this.bottomLimit = this.gameState.levelMap.length - 1 - this.camOffsetVertBlocks;
 	}
 	
 	generateMap(level: number) {
@@ -202,7 +199,6 @@ class Game {
 		let mapSize = {rows: 25, cols: 25};
 		let openness = 0.6; // Percent of dungeon to be open space
 		let desiredOpenSpaces = Math.floor( (mapSize.rows * mapSize.cols) * openness );
-		console.log(desiredOpenSpaces);
 		let map: TileState[][] = [];
 		
 		// Generate a full map of walls of desired size.
@@ -264,6 +260,8 @@ class Game {
 			}
 		}
 		this.gameState.levelMap = map;
+		this.rightLimit = this.gameState.levelMap[0].length - 1 - this.camOffsetHorizBlocks;
+		this.bottomLimit = this.gameState.levelMap.length - 1 - this.camOffsetVertBlocks;
 		this.placePlayerRandomly();
 		//this.placePlayerTopLeft();
 	}
@@ -299,30 +297,29 @@ class Game {
 			if (gameState.levelMap[randomPosition.row][randomPosition.col].type != TileType.Blank) continue;
 			validPosition = true;
 		}
-		let camOffset: CameraOffset = {
-			top: this.gameState.cameraOffset.top, 
-			left: this.gameState.cameraOffset.left
+		let viewPort: ViewPort = {
+			topEdge: this.gameState.viewPort.topEdge, 
+			leftEdge: this.gameState.viewPort.leftEdge
 		};
-		if (randomPosition.col > this.leftLimit
-			&& randomPosition.col <= this.rightLimit) {
-			camOffset.left -= (randomPosition.col - this.leftLimit) * this.blockSizePx;
+		if (randomPosition.col > this.leftLimit) {
+			if (randomPosition.col < this.rightLimit) {
+				viewPort.leftEdge += randomPosition.col - this.leftLimit;
+			} else {
+				viewPort.leftEdge += (randomPosition.col - this.leftLimit)
+					- (randomPosition.col - this.rightLimit);
+			}
 		} 
-		if (randomPosition.row > this.topLimit 
-			&& randomPosition.row <= this.bottomLimit) {
-			camOffset.top -= (randomPosition.row - this.topLimit) * this.blockSizePx;
-		} 
-		if (randomPosition.col < this.rightLimit
-			&& randomPosition.col >= this.leftLimit) {
-			camOffset.left += (this.rightLimit - randomPosition.col) * this.blockSizePx;
-		} 
-		if (randomPosition.row < this.bottomLimit
-			&& randomPosition.row >= this.topLimit) {
-			camOffset.top += (this.bottomLimit - randomPosition.row) * this.blockSizePx;
+		if (randomPosition.row > this.topLimit) {
+			if (randomPosition.row < this.bottomLimit) {
+				viewPort.topEdge += randomPosition.row - this.topLimit;
+			} else {
+				viewPort.topEdge += (randomPosition.row - this.topLimit) 
+					- (randomPosition.row - this.bottomLimit);
+			}
 		}
 		this.gameState.playerPos = randomPosition;
 		this.gameState.levelMap[randomPosition.row][randomPosition.col] = {type: TileType.Player};
-		this.gameState.cameraOffset = camOffset;
-		console.log(randomPosition, camOffset);
+		this.gameState.viewPort = viewPort;
 	}
 	
 	movePlayer(direction: string) {
@@ -338,7 +335,7 @@ class Game {
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
 					if (this.gameState.playerPos.col < this.rightLimit
 							&& this.gameState.playerPos.col >= this.leftLimit) {
-						this.gameState.cameraOffset.left += this.blockSizePx;
+						this.gameState.viewPort.leftEdge -= 1;
 					}
 					this.refreshState();
 				}
@@ -351,7 +348,7 @@ class Game {
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
 					if (this.gameState.playerPos.row < this.bottomLimit 
 							&& this.gameState.playerPos.row >= this.topLimit) {
-						this.gameState.cameraOffset.top += this.blockSizePx;
+						this.gameState.viewPort.topEdge -= 1;
 					}
 					this.refreshState();
 				}
@@ -364,7 +361,7 @@ class Game {
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
 					if (this.gameState.playerPos.col > this.leftLimit
 							&& this.gameState.playerPos.col <= this.rightLimit) {
-						this.gameState.cameraOffset.left -= this.blockSizePx;
+						this.gameState.viewPort.leftEdge += 1;
 					}
 					this.refreshState();
 				}
@@ -377,7 +374,7 @@ class Game {
 					this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = playerState;
 					if (this.gameState.playerPos.row > this.topLimit
 							&& this.gameState.playerPos.row <= this.bottomLimit) {
-						this.gameState.cameraOffset.top -= this.blockSizePx;
+						this.gameState.viewPort.topEdge += 1;
 					}
 					this.refreshState();
 				}
@@ -398,11 +395,17 @@ interface GameState {
 	playerPos: MapCoords;
 	cameraOffset: CameraOffset;
 	levelMap: TileState[][];
+	viewPort: ViewPort;
 }
 
 interface CameraOffset {
 	top: number;
 	left: number;
+}
+
+interface ViewPort {
+	topEdge: number;
+	leftEdge: number;
 }
 
 interface TileState {
