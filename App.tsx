@@ -7,7 +7,7 @@ class App extends React.Component<any, any> {
 	
 	constructor() {
 		super();
-		this.game = new Game(this.refreshState.bind(this));
+		this.game = new Game(this.refreshState.bind(this), 1);
 		this.state = {
 			gameState: this.game.gameState
 		}
@@ -162,9 +162,9 @@ class Game {
 		viewPort: {topEdge: 0, leftEdge: 0}
 	}
 	
-	constructor(refreshState: ()=>void) {
+	constructor(refreshState: ()=>void, level: number) {
 		this.refreshState = refreshState;
-		this.generateRandomMap();
+		this.generateRandomMap(3);
 	}
 	
 	generateMap(level: number) {
@@ -195,9 +195,10 @@ class Game {
 	}
 	
 	// Drunken Walk Generation Algorithm
-	generateRandomMap() {
-		let mapSize = {rows: 25, cols: 25};
-		let openness = 0.6; // Percent of dungeon to be open space
+	generateRandomMap(level: number) {
+		let width = level * 25;
+		let mapSize = {rows: width, cols: width};
+		let openness = 0.2; // Percent of dungeon to be open space
 		let desiredOpenSpaces = Math.floor( (mapSize.rows * mapSize.cols) * openness );
 		let map: TileState[][] = [];
 		
@@ -225,7 +226,7 @@ class Game {
 			switch (randomStep) {
 				case Direction.Left:
 					nextPosition = {row: curPosition.row, col: curPosition.col - 1};
-					if (nextPosition.col < 0) continue;
+					if (nextPosition.col < 1) continue;
 					alreadyVisited = map[nextPosition.row][nextPosition.col].type === TileType.Blank;
 					curPosition = nextPosition;
 					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
@@ -233,7 +234,7 @@ class Game {
 					break;
 				case Direction.Up:
 					nextPosition = {row: curPosition.row - 1, col: curPosition.col};
-					if (nextPosition.row < 0) continue;
+					if (nextPosition.row < 1) continue;
 					alreadyVisited = map[nextPosition.row][nextPosition.col].type === TileType.Blank;
 					curPosition = nextPosition;
 					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
@@ -241,7 +242,7 @@ class Game {
 					break;
 				case Direction.Right:
 					nextPosition = {row: curPosition.row, col: curPosition.col + 1};
-					if (nextPosition.col > mapSize.cols - 1) continue;
+					if (nextPosition.col > mapSize.cols - 2) continue;
 					alreadyVisited = map[nextPosition.row][nextPosition.col].type === TileType.Blank;
 					curPosition = nextPosition;
 					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
@@ -249,7 +250,7 @@ class Game {
 					break;
 				case Direction.Down:
 					nextPosition = {row: curPosition.row + 1, col: curPosition.col};
-					if (nextPosition.row > mapSize.rows - 1) continue;
+					if (nextPosition.row > mapSize.rows - 2) continue;
 					alreadyVisited = map[nextPosition.row][nextPosition.col].type === TileType.Blank;
 					curPosition = nextPosition;
 					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
