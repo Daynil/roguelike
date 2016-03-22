@@ -8,7 +8,7 @@ class App extends React.Component<any, any> {
 	
 	constructor() {
 		super();
-		this.game = new Game(this.refreshState.bind(this), 1);
+		this.game = new Game(this.refreshState.bind(this));
 		this.state = {
 			gameState: this.game.gameState
 		}
@@ -45,12 +45,26 @@ class App extends React.Component<any, any> {
 				break;
 		}
 	}
+	
+	resetGame() {
+		this.game.init(true);
+		this.refreshState();
+	}
+	
+	gameOver() {
+		let gameOver = this.state.gameState.gameOver;
+		if (gameOver == 'no') return true;
+		return false;
+	}
 
 	render() {
 		return (
 			<div id="page-wrapper">
 				<h1>React Roguelike</h1>
 				<div id="hud-game">
+					<GameOver 
+						gameState={this.state.gameState}
+						resetGame={() => this.resetGame()} />
 					<Hud 
 						gameState={this.state.gameState} />
 					<GameComp
@@ -58,6 +72,30 @@ class App extends React.Component<any, any> {
 				</div>
 			</div>
 		)
+	}
+}
+
+class GameOver extends React.Component<any, any> {
+	gameState: GameState;
+	
+	constructor(props) {
+		super(props);
+		this.gameState = this.props.gameState;
+	}
+	
+	gameOver() {
+		let gameOver = this.gameState.gameOver;
+		if (gameOver == 'no') return true;
+		return false;
+	}
+	
+	render() {
+		return (
+			<div id="game-over" hidden={this.gameOver()}>
+				<p>You {this.gameState.gameOver}!!</p>
+				<span className='button' onClick={() => this.props.resetGame()}>Play again?</span>
+			</div>
+		);
 	}
 }
 
@@ -94,14 +132,6 @@ class GameComp extends React.Component<any, any> {
 		this.gameState = this.props.gameState;
 	}
 	
-	getCameraOffset() {
-		let camOffset = this.gameState.cameraOffset;
-		return {
-			left: camOffset.left + 'px',
-			top: camOffset.top + 'px'
-		}
-	}
-	
 	generateTile(tileCoords: MapCoords) {
 		let tileSprite = 'tile';
 		let tileState = this.gameState.levelMap[tileCoords.row][tileCoords.col];
@@ -117,6 +147,9 @@ class GameComp extends React.Component<any, any> {
 				break;
 			case TileType.Enemy:
 				tileSprite += ' enemy';
+				break;
+			case TileType.Boss:
+				tileSprite += ' boss';
 				break;
 			case TileType.Health:
 				tileSprite += ' health';
@@ -185,28 +218,46 @@ class Game {
 	blocksWidth = 21;
 	blocksHeight = 15;
 	
-	gameState: GameState = {
-		playerPos: {row: 3, col: 3},
-		playerState: {
-			type: TileType.Player,
-			health: [100, 100],
-			level: 1,
-			exp: [0, 100],
-			weapon: 0,
-			attack: [0, 2],
-			armor: 0
-		},
-		cameraOffset: {
-			top: -(this.camOffsetVertBlocks*this.blockSizePx), 
-			left: -(this.camOffsetHorizBlocks*this.blockSizePx)
-		},
-		levelMap: [],
-		viewPort: {topEdge: 0, leftEdge: 0}
+	gameState: GameState;
+	
+	constructor(refreshState: ()=>void) {
+		this.refreshState = refreshState;
+		this.init();
 	}
 	
-	constructor(refreshState: ()=>void, level: number) {
-		this.refreshState = refreshState;
-		this.generateRandomMap(3);
+	init(reset?: boolean) {
+		console.log('initting!');
+		let initialState: GameState = {
+			playerPos: {row: 3, col: 3},
+			playerState: {
+				type: TileType.Player,
+				health: [100, 100],
+				level: 1,
+				exp: [0, 100],
+				weapon: 0,
+				attack: [0, 2],
+				armor: 0
+			},
+			levelMap: [],
+			currentLevel: 1,
+			viewPort: {topEdge: 0, leftEdge: 0},
+			gameOver: 'no'
+		}
+		if (reset) {
+			this.gameState.playerState = {
+					type: TileType.Player,
+					health: [100, 100],
+					level: 1,
+					exp: [0, 100],
+					weapon: 0,
+					attack: [0, 2],
+					armor: 0
+			};
+			this.gameState.levelMap = [];
+			this.gameState.currentLevel = 1;
+			this.gameState.gameOver = 'no';
+		} else this.gameState = initialState;
+		this.generateRandomMap(this.gameState.currentLevel);
 	}
 	
 	// Drunken Walk Generation Algorithm
@@ -221,7 +272,7 @@ class Game {
 		*/
 		let width = level * 25;
 		let mapSize = {rows: width, cols: width};
-		let openness = 0.2; // Percent of dungeon to be open space
+		let openness = 0.2 / level; // Percent of dungeon to be open space
 		let desiredOpenSpaces = Math.floor( (mapSize.rows * mapSize.cols) * openness );
 		let map: TileState[][] = [];
 		
@@ -236,8 +287,8 @@ class Game {
 		}
 		
 		let curPosition: MapCoords = {
-			row: _.random(0, mapSize.rows-1),
-			col: _.random(0, mapSize.cols-1)
+			row: _.random(1, mapSize.rows-2),
+			col: _.random(1, mapSize.cols-2)
 		};
 		this.gameState.playerPos = {row: curPosition.row, col: curPosition.col};
 		
@@ -299,18 +350,33 @@ class Game {
 		let numEnemies = 0;
 		while (numEnemies < desiredNumEnemies) {
 			let randomPosition: MapCoords = this.randomPosition(mapSize);
-			let randomHealth = _.random(level, level*4);
-			let randomAttack = _.random(1, level*3);
+			let randomHealth = _.random(level, level*10);
+			let randomAttack = _.random(1, level*8);
 			let relativeLevel = level + Math.floor(randomHealth*.25) + Math.floor(randomAttack*.333);
+			let armor: number;
+			if (level < Armors.length-1) {
+				armor = level-1;
+			} else armor = 4;
 			let enemyState: TileState = {
 				type: TileType.Enemy,
 				health: [randomHealth, randomHealth],
 				level: relativeLevel,
-				attack: [0, _.random(1, level*3)],
-				armor: level-1
+				attack: [level-1, randomAttack],
+				armor: armor
 			}
 			this.gameState.levelMap[randomPosition.row][randomPosition.col] = enemyState;
 			numEnemies++;
+		}
+		if (this.gameState.currentLevel === 7) {
+			let randomPosition: MapCoords = this.randomPosition(mapSize);
+			let bossState:  TileState = {
+				type: TileType.Boss,
+				health: [10000, 10000],
+				level: 100,
+				attack: [50, 100],
+				armor: 4
+			}
+			this.gameState.levelMap[randomPosition.row][randomPosition.col] = bossState;
 		}
 	}
 	
@@ -329,12 +395,18 @@ class Game {
 			this.gameState.levelMap[randomPosition.row][randomPosition.col] = healthState;
 			numHealth++;
 		}
-		let randomWeapon = this.randomPosition(mapSize);
-		this.gameState.levelMap[randomWeapon.row][randomWeapon.col] = {type: TileType.Weapon};
-		let randomArmor = this.randomPosition(mapSize);
-		this.gameState.levelMap[randomArmor.row][randomArmor.col] = {type: TileType.Armor};
-		let randomExit = this.randomPosition(mapSize);
-		this.gameState.levelMap[randomExit.row][randomExit.col] = {type: TileType.Exit};
+		if (this.gameState.playerState.weapon < Weapons.length-1 && level > 1) {
+			let randomWeapon = this.randomPosition(mapSize);
+			this.gameState.levelMap[randomWeapon.row][randomWeapon.col] = {type: TileType.Weapon};
+		}
+		if (this.gameState.playerState.armor < Armors.length-1 && level > 1) {
+			let randomArmor = this.randomPosition(mapSize);
+			this.gameState.levelMap[randomArmor.row][randomArmor.col] = {type: TileType.Armor};
+		}
+		if (this.gameState.currentLevel < 7) {
+			let randomExit = this.randomPosition(mapSize);
+			this.gameState.levelMap[randomExit.row][randomExit.col] = {type: TileType.Exit};
+		}
 	}
 	
 	randomPosition(mapSize: {rows: number, cols: number}): MapCoords {
@@ -385,6 +457,7 @@ class Game {
 				this.movePlayer(playerNextPos);
 				break;
 			case TileType.Enemy:
+			case TileType.Boss:
 				this.attackEnemy(nextState, playerNextPos);
 				break;
 			case TileType.Health:
@@ -395,17 +468,18 @@ class Game {
 				this.movePlayer(playerNextPos);
 				break;
 			case TileType.Weapon:
-				if (this.gameState.playerState.weapon < Weapons.length) this.gameState.playerState.weapon += 1;
 				this.gameState.playerState.weapon += 1;
 				this.calcAttack();
 				this.movePlayer(playerNextPos);
 				break;
 			case TileType.Armor:
-				if (this.gameState.playerState.armor < Armors.length) this.gameState.playerState.armor += 1;
+				this.gameState.playerState.armor += 1;
 				this.movePlayer(playerNextPos);
 				break;
 			case TileType.Exit:
-				// Refresh and generate new map
+				this.gameState.currentLevel += 1;
+				this.generateRandomMap(this.gameState.currentLevel);
+				this.refreshState();
 				break;
 			default:
 				break;
@@ -424,9 +498,12 @@ class Game {
 	attackEnemy(enemyState: TileState, enemyPos: MapCoords) {
 		let playerState = this.gameState.playerState;
 		let playerPos = this.gameState.playerPos;
-		enemyState.health[0] -= _.random(playerState.attack[0], playerState.attack[1]);
-		playerState.health[0] -= _.random(enemyState.attack[0], enemyState.attack[1]);
-		if (playerState.health[0] <= 0) this.gameOver();
+		enemyState.health[0] -= Math.floor(_.random(playerState.attack[0], playerState.attack[1])/Armors[enemyState.armor].defense);
+		playerState.health[0] -= Math.floor(_.random(enemyState.attack[0], enemyState.attack[1])/Armors[playerState.armor].defense);
+		if (playerState.health[0] <= 0)  {
+			this.gameState.gameOver = 'lose';
+			this.refreshState();
+		}
 		else if (enemyState.health[0] <= 0) {
 			this.enemyDeath(enemyState);
 			this.movePlayer(enemyPos);
@@ -439,6 +516,10 @@ class Game {
 		let exp = enemyState.level * 10;
 		this.gameState.playerState.exp[0] += exp;
 		if (this.gameState.playerState.exp[0] >= this.gameState.playerState.exp[1]) this.levelUp();
+		if (enemyState.type === TileType.Boss) {
+			this.gameState.gameOver = 'win';
+			this.refreshState();
+		}
 	}
 	
 	levelUp() {
@@ -475,10 +556,6 @@ class Game {
 			}
 		}
 		this.gameState.viewPort = viewPort;
-	}
-	
-	gameOver() {
-		
 	}
 }
 
@@ -558,9 +635,10 @@ interface MapCoords {
 interface GameState {
 	playerPos: MapCoords;
 	playerState: TileState;
-	cameraOffset: CameraOffset;
 	levelMap: TileState[][];
+	currentLevel: number;
 	viewPort: ViewPort;
+	gameOver: string;
 }
 
 interface CameraOffset {
@@ -587,6 +665,7 @@ enum TileType {
 	Blank,
 	Player,
 	Enemy,
+	Boss,
 	Health,
 	Weapon,
 	Armor,
