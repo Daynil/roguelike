@@ -6,43 +6,62 @@
 	h1 {
 		font-weight: 300;
 	}
-	#hud {
-		
-	}
-	#game-screen {
-		width: 672px;
-		height: 480px;
-		white-space: nowrap;
-		margin: 0 auto;
-		overflow: hidden;
-		font-size: 0;
-		#map {
+	#hud-game {
+		position: relative;
+		right: 75px;
+		top: 20px;
+		#hud {
+			display: inline-block;
 			position: relative;
-			.tile {
-				display: inline-block;
-				width: 32px;
-				height: 32px;
+			right: 20px;
+			text-align: left;
+			vertical-align: top;
+			width: 170px;
+			p {
+				display: block;
+				margin-left: 20px;
+				margin-right: 20px;
 			}
-			.blank {
-				background-color: lightgrey;
-			}		
-			.player {
-				background-color: lightblue;
-			}
-			.wall {
-				background-color: darkgray;
-			}
-			.enemy {
-				background-color: lightpink;
-			}
-			.health {
-				background-color: lightgreen;
-			}
-			.weapon {
-				background-color: lightyellow;
-			}
-			.exit {
-				background-color: blue;
+		}
+		#game-screen {
+			width: 672px;
+			height: 480px;
+			white-space: nowrap;
+			margin: 0 auto;
+			overflow: hidden;
+			font-size: 0;
+			display: inline-block;
+			#map {
+				position: relative;
+				.tile {
+					display: inline-block;
+					width: 32px;
+					height: 32px;
+				}
+				.blank {
+					background-color: lightgrey;
+				}		
+				.player {
+					background-color: lightblue;
+				}
+				.wall {
+					background-color: darkgray;
+				}
+				.enemy {
+					background-color: lightpink;
+				}
+				.health {
+					background-color: lightgreen;
+				}
+				.weapon {
+					background-color: lightyellow;
+				}
+				.armor {
+					background-color: lightseagreen;
+				}
+				.exit {
+					background-color: blue;
+				}
 			}
 		}
 	}

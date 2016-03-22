@@ -50,10 +50,12 @@ class App extends React.Component<any, any> {
 		return (
 			<div id="page-wrapper">
 				<h1>React Roguelike</h1>
-				<Hud 
-					gameState={this.state.gameState} />
-				<GameComp
-					gameState={this.state.gameState} />
+				<div id="hud-game">
+					<Hud 
+						gameState={this.state.gameState} />
+					<GameComp
+						gameState={this.state.gameState} />
+				</div>
 			</div>
 		)
 	}
@@ -70,7 +72,12 @@ class Hud extends React.Component<any, any> {
 	render() {
 		return (
 			<div id="hud">
-				Health: {this.gameState.playerState.health}
+				<p>Level: {this.gameState.playerState.level}</p>
+				<p>Exp: {this.gameState.playerState.exp[0]}/{this.gameState.playerState.exp[1]}</p>
+				<p>Health: {this.gameState.playerState.health[0]}/{this.gameState.playerState.health[1]}</p>
+				<p>Weapon: {Weapons[this.gameState.playerState.weapon].name}</p>
+				<p>Armor: {Armors[this.gameState.playerState.armor].name}</p>
+				<p>Attack: {this.gameState.playerState.attack[0]}-{this.gameState.playerState.attack[1]}</p>
 			</div>
 		);
 	}
@@ -116,6 +123,9 @@ class GameComp extends React.Component<any, any> {
 				break;
 			case TileType.Weapon:
 				tileSprite += ' weapon';
+				break;
+			case TileType.Armor:
+				tileSprite += ' armor';
 				break;
 			case TileType.Exit:
 				tileSprite += ' exit';
@@ -179,9 +189,12 @@ class Game {
 		playerPos: {row: 3, col: 3},
 		playerState: {
 			type: TileType.Player,
-			health: 100,
+			health: [100, 100],
+			level: 1,
+			exp: [0, 100],
+			weapon: 0,
 			attack: [0, 2],
-			weapon: 'fists'
+			armor: 0
 		},
 		cameraOffset: {
 			top: -(this.camOffsetVertBlocks*this.blockSizePx), 
@@ -285,20 +298,16 @@ class Game {
 		let desiredNumEnemies = openSpaces * enemyFactor;
 		let numEnemies = 0;
 		while (numEnemies < desiredNumEnemies) {
-			let randomPosition: MapCoords;
-			let validPosition = false;
-			while (!validPosition) {
-				randomPosition = {
-					row: _.random(0, mapSize.rows-1),
-					col: _.random(0, mapSize.cols-1)
-				};
-				if (gameState.levelMap[randomPosition.row][randomPosition.col].type != TileType.Blank) continue;
-				validPosition = true;
-			}
+			let randomPosition: MapCoords = this.randomPosition(mapSize);
+			let randomHealth = _.random(level, level*4);
+			let randomAttack = _.random(1, level*3);
+			let relativeLevel = level + Math.floor(randomHealth*.25) + Math.floor(randomAttack*.333);
 			let enemyState: TileState = {
 				type: TileType.Enemy,
-				health: _.random(level, level*3),
-				attack: [0, _.random(level*2)]
+				health: [randomHealth, randomHealth],
+				level: relativeLevel,
+				attack: [0, _.random(1, level*3)],
+				armor: level-1
 			}
 			this.gameState.levelMap[randomPosition.row][randomPosition.col] = enemyState;
 			numEnemies++;
@@ -312,38 +321,40 @@ class Game {
 		let desiredNumHealth = openSpaces * healthFactor;
 		let numHealth = 0;
 		while (numHealth < desiredNumHealth) {
-			let randomPosition: MapCoords;
-			let validPosition = false;
-			while (!validPosition) {
-				randomPosition = {
-					row: _.random(0, mapSize.rows-1),
-					col: _.random(0, mapSize.cols-1)
-				};
-				if (gameState.levelMap[randomPosition.row][randomPosition.col].type != TileType.Blank) continue;
-				validPosition = true;
-			}
+			let randomPosition: MapCoords = this.randomPosition(mapSize);
 			let healthState: TileState = {
 				type: TileType.Health,
-				health: _.random(10, 30)	
+				health: [_.random(10, 30)]	
 			};
 			this.gameState.levelMap[randomPosition.row][randomPosition.col] = healthState;
 			numHealth++;
 		}
+		let randomWeapon = this.randomPosition(mapSize);
+		this.gameState.levelMap[randomWeapon.row][randomWeapon.col] = {type: TileType.Weapon};
+		let randomArmor = this.randomPosition(mapSize);
+		this.gameState.levelMap[randomArmor.row][randomArmor.col] = {type: TileType.Armor};
+		let randomExit = this.randomPosition(mapSize);
+		this.gameState.levelMap[randomExit.row][randomExit.col] = {type: TileType.Exit};
+	}
+	
+	randomPosition(mapSize: {rows: number, cols: number}): MapCoords {
+		let randomPos: MapCoords;
+		let validPosition = false;
+		while (!validPosition) {
+			randomPos = {
+				row: _.random(0, mapSize.rows-1),
+				col: _.random(0, mapSize.cols-1)
+			};
+			if (this.gameState.levelMap[randomPos.row][randomPos.col].type != TileType.Blank) continue;
+			validPosition = true;
+		}
+		return randomPos;
 	}
 	
 	placePlayerRandomly() {
 		let gameState: GameState = this.gameState;
 		let mapSize = {rows: gameState.levelMap.length, cols: gameState.levelMap[0].length};
-		let randomPosition: MapCoords;
-		let validPosition = false;
-		while (!validPosition) {
-			randomPosition = {
-				row: _.random(0, mapSize.rows-1),
-				col: _.random(0, mapSize.cols-1)
-			};
-			if (gameState.levelMap[randomPosition.row][randomPosition.col].type != TileType.Blank) continue;
-			validPosition = true;
-		}
+		let randomPosition: MapCoords = this.randomPosition(mapSize);
 		this.gameState.playerPos = randomPosition;
 		this.gameState.levelMap[randomPosition.row][randomPosition.col] = {type: TileType.Player};
 		this.adjustViewport(randomPosition);
@@ -377,15 +388,24 @@ class Game {
 				this.attackEnemy(nextState, playerNextPos);
 				break;
 			case TileType.Health:
-				this.gameState.playerState.health += nextState.health;
-				if (this.gameState.playerState.health > 100) this.gameState.playerState.health = 100;
+				this.gameState.playerState.health[0] += nextState.health[0];
+				if (this.gameState.playerState.health[0] > this.gameState.playerState.health[1]) {
+					this.gameState.playerState.health[0] = this.gameState.playerState.health[1];	
+				} 
 				this.movePlayer(playerNextPos);
 				break;
 			case TileType.Weapon:
-				
+				if (this.gameState.playerState.weapon < Weapons.length) this.gameState.playerState.weapon += 1;
+				this.gameState.playerState.weapon += 1;
+				this.calcAttack();
+				this.movePlayer(playerNextPos);
 				break;
-			case TileType.Enemy:
-				
+			case TileType.Armor:
+				if (this.gameState.playerState.armor < Armors.length) this.gameState.playerState.armor += 1;
+				this.movePlayer(playerNextPos);
+				break;
+			case TileType.Exit:
+				// Refresh and generate new map
 				break;
 			default:
 				break;
@@ -404,10 +424,10 @@ class Game {
 	attackEnemy(enemyState: TileState, enemyPos: MapCoords) {
 		let playerState = this.gameState.playerState;
 		let playerPos = this.gameState.playerPos;
-		enemyState.health -= _.random(playerState.attack[0], playerState.attack[1]);
-		playerState.health -= _.random(enemyState.attack[0], enemyState.attack[1]);
-		if (playerState.health <= 0) this.gameOver();
-		else if (enemyState.health <= 0) {
+		enemyState.health[0] -= _.random(playerState.attack[0], playerState.attack[1]);
+		playerState.health[0] -= _.random(enemyState.attack[0], enemyState.attack[1]);
+		if (playerState.health[0] <= 0) this.gameOver();
+		else if (enemyState.health[0] <= 0) {
 			this.enemyDeath(enemyState);
 			this.movePlayer(enemyPos);
 		} else {
@@ -416,7 +436,24 @@ class Game {
 	}
 	
 	enemyDeath(enemyState: TileState) {
-		
+		let exp = enemyState.level * 10;
+		this.gameState.playerState.exp[0] += exp;
+		if (this.gameState.playerState.exp[0] >= this.gameState.playerState.exp[1]) this.levelUp();
+	}
+	
+	levelUp() {
+		this.gameState.playerState.exp[1] *= 2;
+		this.gameState.playerState.health[1] += 10;
+		this.gameState.playerState.health[0] += 10;
+		this.gameState.playerState.level += 1;
+		this.calcAttack();
+	}
+	
+	calcAttack() {
+		this.gameState.playerState.attack = [
+			(this.gameState.playerState.level-1) + Weapons[this.gameState.playerState.weapon].attack[0],
+			this.gameState.playerState.level + Weapons[this.gameState.playerState.weapon].attack[1]
+		]
 	}
 	
 	adjustViewport(playerState: MapCoords) {
@@ -445,6 +482,74 @@ class Game {
 	}
 }
 
+const Weapons: Weapon[] = [
+	{
+		name: 'fists',
+		attack: [0, 0]
+	},
+	{
+		name: 'brass knuckles',
+		attack: [1, 2]
+	},
+	{
+		name: 'bat',
+		attack: [3, 4]
+	},
+	{
+		name: 'knife',
+		attack: [5, 10]
+	},
+	{
+		name: 'short sword',
+		attack: [10, 20]
+	},
+	{
+		name: 'axe',
+		attack: [15, 25]
+	},
+	{
+		name: 'katana',
+		attack: [20, 30]
+	},
+	{
+		name: "thor's hammer",
+		attack: [40, 80]
+	}
+]
+
+const Armors: Armor[] = [
+	{
+		name: 't-shirt',
+		defense: 1
+	},
+	{
+		name: 'leather jacket',
+		defense: 2
+	},
+	{
+		name: 'chainmail',
+		defense: 3
+	},
+	{
+		name: 'platemail',
+		defense: 4
+	},
+	{
+		name: 'dragonmail',
+		defense: 10
+	}
+]
+
+interface Weapon {
+	name: string; 
+	attack: number[]
+}
+
+interface Armor {
+	name: string;
+	defense: number
+}
+
 interface MapCoords {
 	row: number;
 	col: number;
@@ -470,9 +575,12 @@ interface ViewPort {
 
 interface TileState {
 	type: TileType;
-	health?: number;
+	health?: number[];
+	level?: number;
 	attack?: number[];
-	weapon?: string;
+	weapon?: number;
+	armor?: number;
+	exp?: number[];
 }
 
 enum TileType {
@@ -481,6 +589,7 @@ enum TileType {
 	Enemy,
 	Health,
 	Weapon,
+	Armor,
 	Wall,
 	Exit
 }
