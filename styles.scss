@@ -1,15 +1,18 @@
+$block-size: 32px;
+
 #page-wrapper {
 	margin-top: -22px;
 	font-family: 'Raleway';
 	text-align: center;
 	height: 100vh;
+	background-color: black;
+	color: aliceblue;
 	h1 {
 		font-weight: 300;
 	}
 	#hud-game {
 		position: relative;
 		right: 75px;
-		top: 20px;
 		#game-over {
 			position: absolute;
 			left: 75px;
@@ -48,8 +51,8 @@
 				position: relative;
 				.tile {
 					display: inline-block;
-					width: 32px;
-					height: 32px;
+					width: $block-size;
+					height: $block-size;
 				}
 				.blank {
 					background-color: lightgrey;
@@ -77,6 +80,19 @@
 				}
 				.exit {
 					background-color: blue;
+				}
+				.health-bar {
+					position: relative;
+					background-color: red;
+					width: $block-size;
+					height: 5px;
+					top: $block-size + 3;
+					.remaining {
+						background-color: green;
+						z-index: 1;
+						width: 20px;
+						height: 5px
+					}
 				}
 			}
 		}

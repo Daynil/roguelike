@@ -56,11 +56,17 @@ class App extends React.Component<any, any> {
 		if (gameOver == 'no') return true;
 		return false;
 	}
+	
+	displayLevel() {
+		let level = this.state.gameState.currentLevel;
+		return level < 7 ? level : 'Final';
+	}
 
 	render() {
 		return (
 			<div id="page-wrapper">
 				<h1>React Roguelike</h1>
+				<p>Dungeon Level: {this.displayLevel()}</p>
 				<div id="hud-game">
 					<GameOver 
 						gameState={this.state.gameState}
@@ -108,11 +114,13 @@ class Hud extends React.Component<any, any> {
 	}
 	
 	render() {
+		let healthPercent = this.gameState.playerState.health[0] / this.gameState.playerState.health[1];
+		let color = healthPercent < 0.25 ? {color: '#ff0000'} : {color: '#ffffff'};
 		return (
 			<div id="hud">
 				<p>Level: {this.gameState.playerState.level}</p>
 				<p>Exp: {this.gameState.playerState.exp[0]}/{this.gameState.playerState.exp[1]}</p>
-				<p>Health: {this.gameState.playerState.health[0]}/{this.gameState.playerState.health[1]}</p>
+				<p style={color}>Health: {this.gameState.playerState.health[0]}/{this.gameState.playerState.health[1]}</p>
 				<p>Weapon: {Weapons[this.gameState.playerState.weapon].name}</p>
 				<p>Armor: {Armors[this.gameState.playerState.armor].name}</p>
 				<p>Attack: {this.gameState.playerState.attack[0]}-{this.gameState.playerState.attack[1]}</p>
@@ -132,9 +140,35 @@ class GameComp extends React.Component<any, any> {
 		this.gameState = this.props.gameState;
 	}
 	
+	produceEnemy(coords: MapCoords, visibility, boss?) {
+		let enemyType = boss ? 'tile boss' : 'tile enemy';
+		let enemyState: TileState = this.gameState.levelMap[coords.row][coords.col];
+		let fullWidth = 32;
+		let fractionHealth = enemyState.health[0] / enemyState.health[1] * fullWidth;
+		let healthLeft = {width: fractionHealth + 'px'};
+		let isFull = fractionHealth === 32;
+		return (
+			<div className={'tile'} key={coords.col}>
+				<div className={'tile'} style={visibility} />
+				<div className={enemyType}>
+					<div className="health-bar" hidden={isFull}>
+						<div 
+							className="remaining" 
+							style={healthLeft}></div>
+					</div>	
+				</div>
+			</div>
+		)
+	}
+	
 	generateTile(tileCoords: MapCoords) {
 		let tileSprite = 'tile';
 		let tileState = this.gameState.levelMap[tileCoords.row][tileCoords.col];
+		let alpha = tileState.explored ? '0' : '1';
+		let visibility = {
+			backgroundColor: `hsla(0, 100%, 0%, ${alpha})`,
+			position: 'absolute'
+		}
 		switch (tileState.type) {
 			case TileType.Player:
 				tileSprite += ' player';
@@ -146,11 +180,9 @@ class GameComp extends React.Component<any, any> {
 				tileSprite += ' wall';
 				break;
 			case TileType.Enemy:
-				tileSprite += ' enemy';
-				break;
+				return this.produceEnemy(tileCoords, visibility);
 			case TileType.Boss:
-				tileSprite += ' boss';
-				break;
+				return this.produceEnemy(tileCoords, visibility, true);
 			case TileType.Health:
 				tileSprite += ' health';
 				break;
@@ -167,7 +199,13 @@ class GameComp extends React.Component<any, any> {
 				break;
 		}
 		
-		return <div className={tileSprite} key={tileCoords.col} />
+		//return <div className={tileSprite} key={tileCoords.col} />
+		return (
+			<div className={'tile'} key={tileCoords.col}>
+				<div className={'tile'} style={visibility} />
+				<div className={tileSprite} />
+			</div>
+		)
 	}
 	
 	generateMap(level: number) {
@@ -231,6 +269,7 @@ class Game {
 			playerPos: {row: 3, col: 3},
 			playerState: {
 				type: TileType.Player,
+				explored: true,
 				health: [100, 100],
 				level: 1,
 				exp: [0, 100],
@@ -246,6 +285,7 @@ class Game {
 		if (reset) {
 			this.gameState.playerState = {
 					type: TileType.Player,
+					explored: true,
 					health: [100, 100],
 					level: 1,
 					exp: [0, 100],
@@ -280,7 +320,7 @@ class Game {
 		for (let row = 0; row < mapSize.rows; row++) {
 			let nextRow = [];
 			for (let col = 0; col < mapSize.cols; col++) {
-				let tile: TileState = {type: TileType.Wall};
+				let tile: TileState = {type: TileType.Wall, explored: false};
 				nextRow.push(tile);
 			}
 			map.push(nextRow);
@@ -303,7 +343,7 @@ class Game {
 					if (nextPosition.col < 1) continue;
 					alreadyVisited = map[nextPosition.row][nextPosition.col].type === TileType.Blank;
 					curPosition = nextPosition;
-					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
+					map[curPosition.row][curPosition.col] = this.makeTile(TileType.Blank, nextPosition, true);
 					if (!alreadyVisited) numOpenSpaces++;
 					break;
 				case Direction.Up:
@@ -311,7 +351,7 @@ class Game {
 					if (nextPosition.row < 1) continue;
 					alreadyVisited = map[nextPosition.row][nextPosition.col].type === TileType.Blank;
 					curPosition = nextPosition;
-					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
+					map[curPosition.row][curPosition.col] = this.makeTile(TileType.Blank, nextPosition, true);
 					if (!alreadyVisited) numOpenSpaces++;
 					break;
 				case Direction.Right:
@@ -319,7 +359,7 @@ class Game {
 					if (nextPosition.col > mapSize.cols - 2) continue;
 					alreadyVisited = map[nextPosition.row][nextPosition.col].type === TileType.Blank;
 					curPosition = nextPosition;
-					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
+					map[curPosition.row][curPosition.col] = this.makeTile(TileType.Blank, nextPosition, true);
 					if (!alreadyVisited) numOpenSpaces++;
 					break;
 				case Direction.Down:
@@ -327,7 +367,7 @@ class Game {
 					if (nextPosition.row > mapSize.rows - 2) continue;
 					alreadyVisited = map[nextPosition.row][nextPosition.col].type === TileType.Blank;
 					curPosition = nextPosition;
-					map[curPosition.row][curPosition.col] = {type: TileType.Blank};
+					map[curPosition.row][curPosition.col] = this.makeTile(TileType.Blank, nextPosition, true);
 					if (!alreadyVisited) numOpenSpaces++;
 					break;
 				default:
@@ -359,6 +399,7 @@ class Game {
 			} else armor = 4;
 			let enemyState: TileState = {
 				type: TileType.Enemy,
+				explored: false,
 				health: [randomHealth, randomHealth],
 				level: relativeLevel,
 				attack: [level-1, randomAttack],
@@ -371,6 +412,7 @@ class Game {
 			let randomPosition: MapCoords = this.randomPosition(mapSize);
 			let bossState:  TileState = {
 				type: TileType.Boss,
+				explored: false,
 				health: [10000, 10000],
 				level: 100,
 				attack: [50, 100],
@@ -390,26 +432,27 @@ class Game {
 			let randomPosition: MapCoords = this.randomPosition(mapSize);
 			let healthState: TileState = {
 				type: TileType.Health,
-				health: [_.random(10, 30)]	
+				explored: false,
+				health: [_.random(10, 30)]
 			};
 			this.gameState.levelMap[randomPosition.row][randomPosition.col] = healthState;
 			numHealth++;
 		}
 		if (this.gameState.playerState.weapon < Weapons.length-1 && level > 1) {
 			let randomWeapon = this.randomPosition(mapSize);
-			this.gameState.levelMap[randomWeapon.row][randomWeapon.col] = {type: TileType.Weapon};
+			this.gameState.levelMap[randomWeapon.row][randomWeapon.col] = this.makeTile(TileType.Weapon, randomWeapon);
 		}
 		if (this.gameState.playerState.armor < Armors.length-1 && level > 1) {
 			let randomArmor = this.randomPosition(mapSize);
-			this.gameState.levelMap[randomArmor.row][randomArmor.col] = {type: TileType.Armor};
+			this.gameState.levelMap[randomArmor.row][randomArmor.col] = this.makeTile(TileType.Armor, randomArmor);
 		}
 		if (this.gameState.currentLevel < 7) {
-			let randomExit = this.randomPosition(mapSize);
-			this.gameState.levelMap[randomExit.row][randomExit.col] = {type: TileType.Exit};
+			let randomExit = this.randomPosition(mapSize, true);
+			this.gameState.levelMap[randomExit.row][randomExit.col] = this.makeTile(TileType.Exit, randomExit);
 		}
 	}
 	
-	randomPosition(mapSize: {rows: number, cols: number}): MapCoords {
+	randomPosition(mapSize: {rows: number, cols: number}, padding?): MapCoords {
 		let randomPos: MapCoords;
 		let validPosition = false;
 		while (!validPosition) {
@@ -418,6 +461,17 @@ class Game {
 				col: _.random(0, mapSize.cols-1)
 			};
 			if (this.gameState.levelMap[randomPos.row][randomPos.col].type != TileType.Blank) continue;
+			if (padding) {
+				let hasEmptySpace = false;
+				for (let row = randomPos.row-1; row <= randomPos.row+1; row++) {
+					for (let col = randomPos.col-1; col <= randomPos.col+1; col++) {
+						if (this.gameState.levelMap[randomPos.row][randomPos.col].type === TileType.Blank) {
+							hasEmptySpace = true;
+						}
+					}
+				}
+				if (!hasEmptySpace) continue;
+			}
 			validPosition = true;
 		}
 		return randomPos;
@@ -428,8 +482,9 @@ class Game {
 		let mapSize = {rows: gameState.levelMap.length, cols: gameState.levelMap[0].length};
 		let randomPosition: MapCoords = this.randomPosition(mapSize);
 		this.gameState.playerPos = randomPosition;
-		this.gameState.levelMap[randomPosition.row][randomPosition.col] = {type: TileType.Player};
+		this.gameState.levelMap[randomPosition.row][randomPosition.col] = this.gameState.playerState;
 		this.adjustViewport(randomPosition);
+		this.adjustVisibility();
 	}
 	
 	checkDirection(direction: string) {
@@ -468,12 +523,16 @@ class Game {
 				this.movePlayer(playerNextPos);
 				break;
 			case TileType.Weapon:
-				this.gameState.playerState.weapon += 1;
-				this.calcAttack();
+				if (this.gameState.playerState.weapon < Weapons.length-1) {
+					this.gameState.playerState.weapon += 1;
+					this.calcAttack();
+				}
 				this.movePlayer(playerNextPos);
 				break;
 			case TileType.Armor:
-				this.gameState.playerState.armor += 1;
+				if (this.gameState.playerState.armor < Armors.length-1) {
+					this.gameState.playerState.armor += 1;
+				}
 				this.movePlayer(playerNextPos);
 				break;
 			case TileType.Exit:
@@ -488,10 +547,11 @@ class Game {
 	
 	movePlayer(nextState: MapCoords) {
 		let curState = this.gameState.playerPos;
-		this.gameState.levelMap[curState.row][curState.col] = {type: TileType.Blank};
+		this.gameState.levelMap[curState.row][curState.col] = this.makeTile(TileType.Blank, curState);
 		this.gameState.playerPos = nextState;
-		this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = {type: TileType.Player};
+		this.gameState.levelMap[this.gameState.playerPos.row][this.gameState.playerPos.col] = this.gameState.playerState;
 		this.adjustViewport(nextState);
+		this.adjustVisibility()
 		this.refreshState();
 	}
 	
@@ -505,21 +565,36 @@ class Game {
 			this.refreshState();
 		}
 		else if (enemyState.health[0] <= 0) {
-			this.enemyDeath(enemyState);
-			this.movePlayer(enemyPos);
+			this.enemyDeath(enemyState, enemyPos);
 		} else {
 			this.refreshState();
 		}
 	}
 	
-	enemyDeath(enemyState: TileState) {
+	enemyDeath(enemyState: TileState, enemyPos: MapCoords) {
 		let exp = enemyState.level * 10;
 		this.gameState.playerState.exp[0] += exp;
 		if (this.gameState.playerState.exp[0] >= this.gameState.playerState.exp[1]) this.levelUp();
-		if (enemyState.type === TileType.Boss) {
-			this.gameState.gameOver = 'win';
+		
+		let epicLootChance = enemyState.level / 100;
+		let whichArmor = this.gameState.playerState.armor;
+		let whichWeap = this.gameState.playerState.weapon;
+		if (whichArmor < Armors.length-1 || whichWeap < Weapons.length-1) {
+			let dropLoot = _.random(1, Math.floor(1/epicLootChance)) === 1;
+			console.log('loot chance: ', epicLootChance);
+			if (dropLoot) {
+				if (whichWeap < whichArmor) {
+					this.gameState.levelMap[enemyPos.row][enemyPos.col] = this.makeTile(TileType.Weapon, enemyPos)
+				} else this.gameState.levelMap[enemyPos.row][enemyPos.col] = this.makeTile(TileType.Armor, enemyPos);
+			} else this.gameState.levelMap[enemyPos.row][enemyPos.col] = this.makeTile(TileType.Blank, enemyPos);
+		} else {
+			this.gameState.levelMap[enemyPos.row][enemyPos.col] = this.makeTile(TileType.Blank, enemyPos);
 			this.refreshState();
 		}
+		if (enemyState.type === TileType.Boss) {
+			this.gameState.gameOver = 'win';
+		}
+		this.refreshState();
 	}
 	
 	levelUp() {
@@ -535,6 +610,95 @@ class Game {
 			(this.gameState.playerState.level-1) + Weapons[this.gameState.playerState.weapon].attack[0],
 			this.gameState.playerState.level + Weapons[this.gameState.playerState.weapon].attack[1]
 		]
+	}
+	
+	makeTile(type: TileType, pos: MapCoords, invisible?: boolean): TileState {
+		let tile: TileState;
+		if (invisible) {
+			tile = {
+				type: type,
+				explored: false
+			}
+		} else {
+			tile = {
+				type: type,
+				explored: this.isVisible(pos)
+			}
+		}
+		return tile;
+	}
+	
+	isVisible(pos: MapCoords) {
+		let lineOfSite: MapCoords[] = [];
+		let playerPos = this.gameState.playerPos;
+		let map = this.gameState.levelMap;
+		let isVisible = false;
+		let cornerTiles: MapCoords[] = [
+			{row: playerPos.row-3, col: playerPos.col-3},
+			{row: playerPos.row-3, col: playerPos.col+3},
+			{row: playerPos.row+3, col: playerPos.col-3},
+			{row: playerPos.row+3, col: playerPos.col+3}
+		];
+		for (let row = playerPos.row-3; row < playerPos.row+4; row++) {
+			for (let col = playerPos.col-3; col < playerPos.col+4; col++) {
+				if (row > 0 && row < map.length
+					&& col > 0 && col < map[0].length) {
+						let checkTile: MapCoords = {row: row, col: col};
+						let isCorner = false;
+						cornerTiles.forEach(corner => {
+							if (_.isEqual(checkTile, corner)) isCorner = true;
+						});
+						if (!isCorner) {
+							if (_.isEqual(checkTile, pos)) return true;
+						}
+					}
+			}
+		}
+		return false;
+	}
+	
+	adjustVisibility() {
+		let lineOfSite: MapCoords[] = [];
+		let playerPos = this.gameState.playerPos;
+		let map = this.gameState.levelMap;
+		let isVisible = false;
+		let cornerTiles: MapCoords[] = [
+			{row: playerPos.row-3, col: playerPos.col-3},
+			{row: playerPos.row-3, col: playerPos.col+3},
+			{row: playerPos.row+3, col: playerPos.col-3},
+			{row: playerPos.row+3, col: playerPos.col+3}
+		];
+		// Set all tiles within a 3 box radius minus corners to visible and explored
+		for (let row = playerPos.row-3; row < playerPos.row+4; row++) {
+			for (let col = playerPos.col-3; col < playerPos.col+4; col++) {
+				if (row >= 0 && row < map.length
+					&& col >= 0 && col < map[0].length) {
+						let checkTile: MapCoords = {row: row, col: col};
+						let isCorner = false;
+						cornerTiles.forEach(corner => {
+							if (_.isEqual(checkTile, corner)) isCorner = true;
+						});
+						if (!isCorner) {
+							this.gameState.levelMap[checkTile.row][checkTile.col].explored = true;
+							lineOfSite.push(checkTile);
+						}
+					}
+			}
+		}
+/*		// Set all tiles outside this range to invisible, leave explored state
+		for (let row = 0; row < map.length; row++) {
+			let nextRow = [];
+			for (let col = 0; col < map[0].length; col++) {
+				let checkTile: MapCoords = {row: row, col: col};
+				let tileVisible = false;
+				lineOfSite.forEach(visible => {
+					if (_.isEqual(checkTile, visible)) {
+						tileVisible = true;
+					}
+				});
+				if (!tileVisible) this.gameState.levelMap[checkTile.row][checkTile.col].visible = false;
+			}
+		}*/
 	}
 	
 	adjustViewport(playerState: MapCoords) {
@@ -604,12 +768,24 @@ const Armors: Armor[] = [
 		defense: 2
 	},
 	{
-		name: 'chainmail',
+		name: 'padded armor',
 		defense: 3
 	},
 	{
+		name: 'hide armor',
+		defense: 4	
+	},
+	{
+		name: 'chainmail',
+		defense: 5
+	},
+	{
+		name: 'scalemail',
+		defense: 6
+	},
+	{
 		name: 'platemail',
-		defense: 4
+		defense: 7
 	},
 	{
 		name: 'dragonmail',
@@ -653,6 +829,7 @@ interface ViewPort {
 
 interface TileState {
 	type: TileType;
+	explored: boolean;
 	health?: number[];
 	level?: number;
 	attack?: number[];
@@ -663,13 +840,13 @@ interface TileState {
 
 enum TileType {
 	Blank,
+	Wall,
 	Player,
 	Enemy,
 	Boss,
 	Health,
 	Weapon,
 	Armor,
-	Wall,
 	Exit
 }
 
