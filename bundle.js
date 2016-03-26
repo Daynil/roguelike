@@ -20010,7 +20010,7 @@
 	            var bossState = {
 	                type: TileType.Boss,
 	                explored: false,
-	                health: [10000, 10000],
+	                health: [1000, 1000],
 	                level: 100,
 	                attack: [50, 100],
 	                armor: 4
