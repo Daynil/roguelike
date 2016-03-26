@@ -20010,7 +20010,7 @@
 	            var bossState = {
 	                type: TileType.Boss,
 	                explored: false,
-	                health: [1000, 1000],
+	                health: [10000, 10000],
 	                level: 100,
 	                attack: [50, 100],
 	                armor: 4
@@ -35821,7 +35821,6 @@
 	function applyToTag(styleElement, obj) {
 		var css = obj.css;
 		var media = obj.media;
-		var sourceMap = obj.sourceMap;
 	
 		if(media) {
 			styleElement.setAttribute("media", media)
@@ -35839,7 +35838,6 @@
 	
 	function updateLink(linkElement, obj) {
 		var css = obj.css;
-		var media = obj.media;
 		var sourceMap = obj.sourceMap;
 	
 		if(sourceMap) {
