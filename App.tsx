@@ -65,7 +65,7 @@ class App extends React.Component<any, any> {
 	render() {
 		return (
 			<div id="page-wrapper">
-				<h1>React Roguelike</h1>
+				<h1>React Roguelike</h1><Foot />
 				<p>Dungeon Level: {this.displayLevel()}</p>
 				<div id="hud-game">
 					<GameOver 
@@ -240,6 +240,22 @@ class Tile extends React.Component<any, any> {
 		);
 	}
 }
+
+class Foot extends React.Component<any, any> {
+	render() {
+		return (
+			<div id="foot">
+				<a id="gh-link" href="https://github.com/Daynil/roguelike">
+					<i className="fa fa-github-square fa-lg"></i>
+				</a>
+				<div id="foot-text">
+					By <a href="https://github.com/Daynil/">Daynil</a> for <a href="http://www.freecodecamp.com/">FCC</a>
+				</div>
+			</div>
+		);
+	}
+}
+
 
 class Game {
 	
