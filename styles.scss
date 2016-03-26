@@ -12,7 +12,7 @@ $block-size: 32px;
 	}
 	#hud-game {
 		position: relative;
-		right: 75px;
+		right: 4%;
 		#game-over {
 			position: absolute;
 			left: 75px;
@@ -122,4 +122,49 @@ $block-size: 32px;
 		color: black;
 		background-color: aliceblue;
 	}
+}
+
+#foot {
+	position: absolute;
+	right: 0;
+	top: 0;
+	font-family: 'Raleway';
+	font-size: 20px;
+	color: aliceblue;
+	height: 50px;
+	text-align: center;
+	/*** Desktop and Tablet ***/
+	@media only screen and (min-width: 768px) {
+		margin-right: 10px;
+	}
+	/*** Phones ***/
+	@media only screen and (max-width: 767px) {
+		margin-right: 23%;
+	}
+	#foot-text {
+		display: inline-block;
+		position: relative;
+		top: 10px;
+	}
+}
+
+#gh-link {
+	position: relative;
+    top: 9px;
+    right: 5px;
+}
+
+#foot i, #foot a {
+	color: aliceblue;
+	transition: 0.3s;
+	text-decoration: none;
+}
+
+#foot a:hover, #gh-link:hover i {
+	color: red;
+	text-decoration: none;
+}
+
+#foot i {
+	padding-left: 2px;
 }
