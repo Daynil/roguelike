@@ -53,33 +53,47 @@ $block-size: 32px;
 					display: inline-block;
 					width: $block-size;
 					height: $block-size;
+					@extend .blank;
+					z-index: -1;
+				}
+				.sprite {
+					background: url(sprites.png) no-repeat;
 				}
 				.blank {
-					background-color: lightgrey;
+					@extend .sprite;
+					background-position: 0 -34px;
 				}		
 				.player {
-					background-color: lightblue;
+					@extend .sprite;
+					background-position: 0 0px;
 				}
 				.wall {
-					background-color: darkgray;
+					@extend .sprite;
+					background-position: -32px -34px;
 				}
 				.enemy {
-					background-color: lightpink;
+					@extend .sprite;
+					background-position: -34px 0;
 				}
 				.boss {
-					background-color: red;
+					@extend .sprite;
+					background-position: -68px 0;
 				}
 				.health {
-					background-color: lightgreen;
+					@extend .sprite;
+					background-position: -66px -67px;
 				}
 				.weapon {
-					background-color: lightyellow;
+					@extend .sprite;
+					background-position: 0 -67px;
 				}
 				.armor {
-					background-color: lightseagreen;
+					@extend .sprite;
+					background-position: -33px -68px;
 				}
 				.exit {
-					background-color: blue;
+					@extend .sprite;
+					background-position: -64px -34px;
 				}
 				.health-bar {
 					position: relative;

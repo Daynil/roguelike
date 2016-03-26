@@ -25,6 +25,11 @@ module.exports = {
 			{
 				test: /\.scss$/,
 				loader: 'style-loader!css-loader!sass-loader'	// Chains right to left
+			},
+			
+			{
+				test: /\.png$/,
+				loader: 'url-loader?limit=8192'
 			}
 
 		]

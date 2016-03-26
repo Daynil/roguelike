@@ -148,8 +148,8 @@ class GameComp extends React.Component<any, any> {
 		let healthLeft = {width: fractionHealth + 'px'};
 		let isFull = fractionHealth === 32;
 		return (
-			<div className={'tile'} key={coords.col}>
-				<div className={'tile'} style={visibility} />
+			<div className={'tile'} key={coords.col} style={visibility}>
+				<div className={'tile'} style={{position: 'absolute'}} />
 				<div className={enemyType}>
 					<div className="health-bar" hidden={isFull}>
 						<div 
@@ -165,9 +165,10 @@ class GameComp extends React.Component<any, any> {
 		let tileSprite = 'tile';
 		let tileState = this.gameState.levelMap[tileCoords.row][tileCoords.col];
 		let alpha = tileState.explored ? '0' : '1';
+		let visible = tileState.explored ? 'visible' : "hidden !important";
 		let visibility = {
-			backgroundColor: `hsla(0, 100%, 0%, ${alpha})`,
-			position: 'absolute'
+			//backgroundColor: `hsla(0, 100%, 0%, ${alpha})`,
+			visibility: visible
 		}
 		switch (tileState.type) {
 			case TileType.Player:
@@ -201,8 +202,8 @@ class GameComp extends React.Component<any, any> {
 		
 		//return <div className={tileSprite} key={tileCoords.col} />
 		return (
-			<div className={'tile'} key={tileCoords.col}>
-				<div className={'tile'} style={visibility} />
+			<div className={'tile'} key={tileCoords.col} style={visibility}>
+				<div className={'tile'} style={{position: 'absolute'}} />
 				<div className={tileSprite} />
 			</div>
 		)
@@ -440,15 +441,15 @@ class Game {
 		}
 		if (this.gameState.playerState.weapon < Weapons.length-1 && level > 1) {
 			let randomWeapon = this.randomPosition(mapSize);
-			this.gameState.levelMap[randomWeapon.row][randomWeapon.col] = this.makeTile(TileType.Weapon, randomWeapon);
+			this.gameState.levelMap[randomWeapon.row][randomWeapon.col] = this.makeTile(TileType.Weapon, randomWeapon, true);
 		}
 		if (this.gameState.playerState.armor < Armors.length-1 && level > 1) {
 			let randomArmor = this.randomPosition(mapSize);
-			this.gameState.levelMap[randomArmor.row][randomArmor.col] = this.makeTile(TileType.Armor, randomArmor);
+			this.gameState.levelMap[randomArmor.row][randomArmor.col] = this.makeTile(TileType.Armor, randomArmor, true);
 		}
 		if (this.gameState.currentLevel < 7) {
 			let randomExit = this.randomPosition(mapSize, true);
-			this.gameState.levelMap[randomExit.row][randomExit.col] = this.makeTile(TileType.Exit, randomExit);
+			this.gameState.levelMap[randomExit.row][randomExit.col] = this.makeTile(TileType.Exit, randomExit, true);
 		}
 	}
 	
@@ -685,20 +686,6 @@ class Game {
 					}
 			}
 		}
-/*		// Set all tiles outside this range to invisible, leave explored state
-		for (let row = 0; row < map.length; row++) {
-			let nextRow = [];
-			for (let col = 0; col < map[0].length; col++) {
-				let checkTile: MapCoords = {row: row, col: col};
-				let tileVisible = false;
-				lineOfSite.forEach(visible => {
-					if (_.isEqual(checkTile, visible)) {
-						tileVisible = true;
-					}
-				});
-				if (!tileVisible) this.gameState.levelMap[checkTile.row][checkTile.col].visible = false;
-			}
-		}*/
 	}
 	
 	adjustViewport(playerState: MapCoords) {

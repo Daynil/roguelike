@@ -9,10 +9,12 @@
   "author": "Daynil",
   "license": "ISC",
   "dependencies": {
+    "file-loader": "^0.8.5",
     "lodash": "^4.6.1",
     "react": "^0.14.6",
     "react-dom": "^0.14.6",
-    "typescript": "^1.7.5"
+    "typescript": "^1.7.5",
+    "url-loader": "^0.5.7"
   },
   "devDependencies": {
     "css-loader": "^0.23.1",
